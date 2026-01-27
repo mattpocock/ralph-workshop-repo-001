@@ -44,7 +44,11 @@ Next, implement the minimum amount of code necessary to make the tests pass.
 
 # EXECUTION: REFACTOR
 
-Finally, refactor the code to improve its structure without changing its behavior.
+Finally, ALWAYS refactor the code to improve its structure.
+
+- Break code out into separate files and functions
+- Break tests into separate files as needed
+- Find shared utilities across files and move them to common utility files
 
 This codebase will outlive you. Every shortcut you take becomes
 someone else's burden. Every hack compounds into technical debt
