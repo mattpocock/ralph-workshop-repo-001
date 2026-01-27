@@ -81,6 +81,42 @@ const app = new Hono()
       })),
     });
   })
+  .get("/api/links/:id", (c) => {
+    const id = c.req.param("id");
+    const db = getDatabase();
+
+    const link = db
+      .prepare(
+        "SELECT id, slug, target_url, password_hash, expires_at, created_at, updated_at FROM links WHERE id = ?"
+      )
+      .get(id) as
+      | {
+          id: string;
+          slug: string;
+          target_url: string;
+          password_hash: string | null;
+          expires_at: number | null;
+          created_at: number;
+          updated_at: number;
+        }
+      | undefined;
+
+    if (!link) {
+      return c.json({ error: "Link not found", code: "NOT_FOUND" }, 404);
+    }
+
+    return c.json({
+      id: link.id,
+      slug: link.slug,
+      shortUrl: `${BASE_URL}/${link.slug}`,
+      targetUrl: link.target_url,
+      expiresAt: link.expires_at,
+      hasPassword: !!link.password_hash,
+      tags: [],
+      createdAt: link.created_at,
+      updatedAt: link.updated_at,
+    });
+  })
   .get("/:slug", async (c) => {
     const slug = c.req.param("slug");
     const db = getDatabase();
