@@ -62,6 +62,85 @@ const app = new Hono()
       201
     );
   })
+  .get("/api/links", (c) => {
+    const db = getDatabase();
+    const page = parseInt(c.req.query("page") || "1", 10);
+    const limit = parseInt(c.req.query("limit") || "20", 10);
+    const tag = c.req.query("tag");
+    const offset = (page - 1) * limit;
+
+    let countQuery = "SELECT COUNT(DISTINCT l.id) as total FROM links l";
+    let selectQuery = `
+      SELECT DISTINCT l.id, l.slug, l.target_url, l.password_hash, l.expires_at, l.created_at, l.updated_at
+      FROM links l
+    `;
+
+    if (tag) {
+      const joinClause = " INNER JOIN link_tags lt ON l.id = lt.link_id INNER JOIN tags t ON lt.tag_id = t.id WHERE t.name = ?";
+      countQuery += joinClause;
+      selectQuery += joinClause;
+    }
+
+    selectQuery += " ORDER BY l.created_at DESC LIMIT ? OFFSET ?";
+
+    const totalResult = tag
+      ? (db.prepare(countQuery).get(tag) as { total: number })
+      : (db.prepare(countQuery).get() as { total: number });
+    const total = totalResult.total;
+    const totalPages = Math.ceil(total / limit);
+
+    const links = tag
+      ? (db.prepare(selectQuery).all(tag, limit, offset) as Array<{
+          id: string;
+          slug: string;
+          target_url: string;
+          password_hash: string | null;
+          expires_at: number | null;
+          created_at: number;
+          updated_at: number;
+        }>)
+      : (db.prepare(selectQuery).all(limit, offset) as Array<{
+          id: string;
+          slug: string;
+          target_url: string;
+          password_hash: string | null;
+          expires_at: number | null;
+          created_at: number;
+          updated_at: number;
+        }>);
+
+    // Fetch tags for each link
+    const getTagsStmt = db.prepare(
+      `SELECT t.name FROM tags t
+       INNER JOIN link_tags lt ON t.id = lt.tag_id
+       WHERE lt.link_id = ?`
+    );
+
+    const formattedLinks = links.map((link) => {
+      const tags = getTagsStmt.all(link.id) as Array<{ name: string }>;
+      return {
+        id: link.id,
+        slug: link.slug,
+        shortUrl: `${BASE_URL}/${link.slug}`,
+        targetUrl: link.target_url,
+        expiresAt: link.expires_at,
+        hasPassword: !!link.password_hash,
+        tags: tags.map((t) => t.name),
+        createdAt: link.created_at,
+        updatedAt: link.updated_at,
+      };
+    });
+
+    return c.json({
+      links: formattedLinks,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    });
+  })
   .get("/api/links/:id/clicks", (c) => {
     const id = c.req.param("id");
     const db = getDatabase();
