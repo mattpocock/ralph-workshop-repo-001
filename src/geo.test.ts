@@ -1,7 +1,8 @@
-import { describe, it, expect, assert } from "vitest";
+import { describe, it, expect, assert, beforeEach } from "vitest";
 import { testClient } from "hono/testing";
 import { customAlphabet } from "nanoid";
 import app from "./index.ts";
+import { seedTestApiKey, authHeaders } from "./test/helpers.ts";
 
 const nanoid = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 7);
 
@@ -13,19 +14,26 @@ function sleep(ms: number): Promise<void> {
 describe("Geo-IP lookup on click", () => {
   const client = testClient(app);
 
+  beforeEach(() => {
+    seedTestApiKey();
+  });
+
   it("should populate country and city from geo-IP lookup after click", async () => {
     // Create a link
     const slug = `geo-${nanoid()}`;
-    const createRes = await client.api.links.$post({
-      json: {
-        url: "https://example.com/geo-test",
-        slug,
+    const createRes = await client.api.links.$post(
+      {
+        json: {
+          url: "https://example.com/geo-test",
+          slug,
+        },
       },
-    });
+      { headers: authHeaders }
+    );
     expect(createRes.status).toBe(201);
     const link = await createRes.json();
 
-    // Visit the redirect endpoint with a real-looking IP
+    // Visit the redirect endpoint with a real-looking IP (redirect doesn't require auth)
     const redirectRes = await client[":slug"].$get(
       {
         param: { slug },
@@ -43,10 +51,13 @@ describe("Geo-IP lookup on click", () => {
     await sleep(2000);
 
     // Verify the click has geo data populated
-    const clicksRes = await client.api.links[":id"].clicks.$get({
-      param: { id: link.id },
-      query: {},
-    });
+    const clicksRes = await client.api.links[":id"].clicks.$get(
+      {
+        param: { id: link.id },
+        query: {},
+      },
+      { headers: authHeaders }
+    );
     expect(clicksRes.status).toBe(200);
 
     const clicksBody = await clicksRes.json();

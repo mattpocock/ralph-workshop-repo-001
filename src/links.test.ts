@@ -1,16 +1,24 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { testClient } from "hono/testing";
 import app from "./index.ts";
+import { seedTestApiKey, authHeaders } from "./test/helpers.ts";
 
 describe("POST /api/links", () => {
   const client = testClient(app);
 
+  beforeEach(() => {
+    seedTestApiKey();
+  });
+
   it("should create a link with auto-generated slug", async () => {
-    const res = await client.api.links.$post({
-      json: {
-        url: "https://example.com/very-long-url",
+    const res = await client.api.links.$post(
+      {
+        json: {
+          url: "https://example.com/very-long-url",
+        },
       },
-    });
+      { headers: authHeaders }
+    );
 
     expect(res.status).toBe(201);
 

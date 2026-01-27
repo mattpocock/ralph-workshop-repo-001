@@ -1,23 +1,31 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { testClient } from "hono/testing";
 import { customAlphabet } from "nanoid";
 import app from "./index.ts";
+import { seedTestApiKey, authHeaders } from "./test/helpers.ts";
 
 const nanoid = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 7);
 
 describe("Password-protected links", () => {
   const client = testClient(app);
 
+  beforeEach(() => {
+    seedTestApiKey();
+  });
+
   describe("POST /api/links with password", () => {
     it("should create a link with hasPassword: true when password provided", async () => {
       const slug = `pwd-${nanoid()}`;
-      const res = await client.api.links.$post({
-        json: {
-          url: "https://example.com/secret",
-          slug,
-          password: "secret123",
+      const res = await client.api.links.$post(
+        {
+          json: {
+            url: "https://example.com/secret",
+            slug,
+            password: "secret123",
+          },
         },
-      });
+        { headers: authHeaders }
+      );
 
       expect(res.status).toBe(201);
       const body = await res.json();
@@ -28,14 +36,18 @@ describe("Password-protected links", () => {
   describe("GET /:slug with password protection", () => {
     it("should return 401 when accessing password-protected link without password", async () => {
       const slug = `pwd-${nanoid()}`;
-      await client.api.links.$post({
-        json: {
-          url: "https://example.com/protected",
-          slug,
-          password: "mypassword",
+      await client.api.links.$post(
+        {
+          json: {
+            url: "https://example.com/protected",
+            slug,
+            password: "mypassword",
+          },
         },
-      });
+        { headers: authHeaders }
+      );
 
+      // Redirect doesn't require auth
       const res = await client[":slug"].$get({
         param: { slug },
       });
@@ -50,14 +62,18 @@ describe("Password-protected links", () => {
 
     it("should redirect when correct password is provided", async () => {
       const slug = `pwd-${nanoid()}`;
-      await client.api.links.$post({
-        json: {
-          url: "https://example.com/secret-destination",
-          slug,
-          password: "correctpassword",
+      await client.api.links.$post(
+        {
+          json: {
+            url: "https://example.com/secret-destination",
+            slug,
+            password: "correctpassword",
+          },
         },
-      });
+        { headers: authHeaders }
+      );
 
+      // Redirect doesn't require auth
       const res = await app.request(`/${slug}?password=correctpassword`);
 
       expect(res.status).toBe(302);
@@ -68,14 +84,18 @@ describe("Password-protected links", () => {
 
     it("should return 401 when wrong password is provided", async () => {
       const slug = `pwd-${nanoid()}`;
-      await client.api.links.$post({
-        json: {
-          url: "https://example.com/protected",
-          slug,
-          password: "rightpassword",
+      await client.api.links.$post(
+        {
+          json: {
+            url: "https://example.com/protected",
+            slug,
+            password: "rightpassword",
+          },
         },
-      });
+        { headers: authHeaders }
+      );
 
+      // Redirect doesn't require auth
       const res = await app.request(`/${slug}?password=wrongpassword`);
 
       expect(res.status).toBe(401);

@@ -1,17 +1,25 @@
-import { describe, it, expect, assert } from "vitest";
+import { describe, it, expect, assert, beforeEach } from "vitest";
 import { testClient } from "hono/testing";
 import { customAlphabet } from "nanoid";
 import app from "./index.ts";
+import { seedTestApiKey, authHeaders } from "./test/helpers.ts";
 
 const nanoid = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 7);
 
 describe("GET /api/links/:id/stats", () => {
   const client = testClient(app);
 
+  beforeEach(() => {
+    seedTestApiKey();
+  });
+
   it("should return 404 for non-existent link", async () => {
-    const res = await client.api.links[":id"].stats.$get({
-      param: { id: "nonexistent" },
-    });
+    const res = await client.api.links[":id"].stats.$get(
+      {
+        param: { id: "nonexistent" },
+      },
+      { headers: authHeaders }
+    );
     expect(res.status).toBe(404);
 
     const body = await res.json();
@@ -21,18 +29,24 @@ describe("GET /api/links/:id/stats", () => {
 
   it("should return empty stats for link with no clicks", async () => {
     const slug = `stats-empty-${nanoid()}`;
-    const createRes = await client.api.links.$post({
-      json: {
-        url: "https://example.com/no-clicks",
-        slug,
+    const createRes = await client.api.links.$post(
+      {
+        json: {
+          url: "https://example.com/no-clicks",
+          slug,
+        },
       },
-    });
+      { headers: authHeaders }
+    );
     expect(createRes.status).toBe(201);
     const link = await createRes.json();
 
-    const statsRes = await client.api.links[":id"].stats.$get({
-      param: { id: link.id },
-    });
+    const statsRes = await client.api.links[":id"].stats.$get(
+      {
+        param: { id: link.id },
+      },
+      { headers: authHeaders }
+    );
     expect(statsRes.status).toBe(200);
 
     const stats = await statsRes.json();
@@ -46,16 +60,19 @@ describe("GET /api/links/:id/stats", () => {
 
   it("should return stats after clicks are recorded", async () => {
     const slug = `stats-clicks-${nanoid()}`;
-    const createRes = await client.api.links.$post({
-      json: {
-        url: "https://example.com/with-clicks",
-        slug,
+    const createRes = await client.api.links.$post(
+      {
+        json: {
+          url: "https://example.com/with-clicks",
+          slug,
+        },
       },
-    });
+      { headers: authHeaders }
+    );
     expect(createRes.status).toBe(201);
     const link = await createRes.json();
 
-    // Generate some clicks with different referrers
+    // Generate some clicks with different referrers (redirect doesn't require auth)
     await client[":slug"].$get(
       { param: { slug } },
       { headers: { Referer: "https://twitter.com/post1" } }
@@ -69,9 +86,12 @@ describe("GET /api/links/:id/stats", () => {
       { headers: { Referer: "https://facebook.com/post1" } }
     );
 
-    const statsRes = await client.api.links[":id"].stats.$get({
-      param: { id: link.id },
-    });
+    const statsRes = await client.api.links[":id"].stats.$get(
+      {
+        param: { id: link.id },
+      },
+      { headers: authHeaders }
+    );
     expect(statsRes.status).toBe(200);
 
     const stats = await statsRes.json();
@@ -87,16 +107,19 @@ describe("GET /api/links/:id/stats", () => {
 
   it("should aggregate referrers by domain", async () => {
     const slug = `stats-ref-${nanoid()}`;
-    const createRes = await client.api.links.$post({
-      json: {
-        url: "https://example.com/referrer-test",
-        slug,
+    const createRes = await client.api.links.$post(
+      {
+        json: {
+          url: "https://example.com/referrer-test",
+          slug,
+        },
       },
-    });
+      { headers: authHeaders }
+    );
     expect(createRes.status).toBe(201);
     const link = await createRes.json();
 
-    // Multiple clicks from same referrer domain
+    // Multiple clicks from same referrer domain (redirect doesn't require auth)
     await client[":slug"].$get(
       { param: { slug } },
       { headers: { Referer: "https://twitter.com/post1" } }
@@ -107,9 +130,12 @@ describe("GET /api/links/:id/stats", () => {
     );
     await client[":slug"].$get({ param: { slug } }); // Direct (no referrer)
 
-    const statsRes = await client.api.links[":id"].stats.$get({
-      param: { id: link.id },
-    });
+    const statsRes = await client.api.links[":id"].stats.$get(
+      {
+        param: { id: link.id },
+      },
+      { headers: authHeaders }
+    );
     expect(statsRes.status).toBe(200);
 
     const stats = await statsRes.json();

@@ -1,12 +1,17 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { testClient } from "hono/testing";
 import app from "./index.ts";
+import { seedTestApiKey, authHeaders } from "./test/helpers.ts";
 
 describe("GET /api/tags", () => {
   const client = testClient(app);
 
+  beforeEach(() => {
+    seedTestApiKey();
+  });
+
   it("should return empty list when no tags exist", async () => {
-    const res = await client.api.tags.$get();
+    const res = await client.api.tags.$get({}, { headers: authHeaders });
 
     expect(res.status).toBe(200);
 
@@ -19,18 +24,23 @@ describe("GET /api/tags", () => {
     const tagName = `tag-list-${Date.now()}`;
 
     // Create a tag
-    const createTagRes = await client.api.tags.$post({
-      json: { name: tagName },
-    });
+    const createTagRes = await client.api.tags.$post(
+      {
+        json: { name: tagName },
+      },
+      { headers: authHeaders }
+    );
     expect(createTagRes.status).toBe(201);
     const createdTag = await createTagRes.json();
 
     // Get tags list
-    const res = await client.api.tags.$get();
+    const res = await client.api.tags.$get({}, { headers: authHeaders });
     expect(res.status).toBe(200);
 
     const body = await res.json();
-    const foundTag = body.tags.find((t: { name: string }) => t.name === tagName);
+    const foundTag = body.tags.find(
+      (t: { name: string }) => t.name === tagName
+    );
     expect(foundTag).toBeDefined();
     if (!foundTag || !("id" in createdTag)) throw new Error("Tag not found");
     expect(foundTag.id).toBe(createdTag.id);
@@ -42,17 +52,22 @@ describe("GET /api/tags", () => {
     const tagName = `orphan-tag-${Date.now()}`;
 
     // Create a tag without any links
-    const createTagRes = await client.api.tags.$post({
-      json: { name: tagName },
-    });
+    const createTagRes = await client.api.tags.$post(
+      {
+        json: { name: tagName },
+      },
+      { headers: authHeaders }
+    );
     expect(createTagRes.status).toBe(201);
 
     // Get tags list
-    const res = await client.api.tags.$get();
+    const res = await client.api.tags.$get({}, { headers: authHeaders });
     expect(res.status).toBe(200);
 
     const body = await res.json();
-    const foundTag = body.tags.find((t: { name: string }) => t.name === tagName);
+    const foundTag = body.tags.find(
+      (t: { name: string }) => t.name === tagName
+    );
     expect(foundTag).toBeDefined();
     if (!foundTag) throw new Error("Tag not found");
     expect(foundTag.linkCount).toBe(0);
@@ -62,13 +77,20 @@ describe("GET /api/tags", () => {
 describe("POST /api/tags", () => {
   const client = testClient(app);
 
+  beforeEach(() => {
+    seedTestApiKey();
+  });
+
   it("should create a tag", async () => {
     const tagName = `tag-${Date.now()}`;
-    const res = await client.api.tags.$post({
-      json: {
-        name: tagName,
+    const res = await client.api.tags.$post(
+      {
+        json: {
+          name: tagName,
+        },
       },
-    });
+      { headers: authHeaders }
+    );
 
     expect(res.status).toBe(201);
 
@@ -80,11 +102,14 @@ describe("POST /api/tags", () => {
   });
 
   it("should return 400 for invalid tag name", async () => {
-    const res = await client.api.tags.$post({
-      json: {
-        name: "",
+    const res = await client.api.tags.$post(
+      {
+        json: {
+          name: "",
+        },
       },
-    });
+      { headers: authHeaders }
+    );
 
     expect(res.status).toBe(400);
   });
@@ -93,14 +118,20 @@ describe("POST /api/tags", () => {
     const tagName = `dup-tag-${Date.now()}`;
 
     // Create tag first time
-    await client.api.tags.$post({
-      json: { name: tagName },
-    });
+    await client.api.tags.$post(
+      {
+        json: { name: tagName },
+      },
+      { headers: authHeaders }
+    );
 
     // Try to create same tag again
-    const res = await client.api.tags.$post({
-      json: { name: tagName },
-    });
+    const res = await client.api.tags.$post(
+      {
+        json: { name: tagName },
+      },
+      { headers: authHeaders }
+    );
 
     expect(res.status).toBe(409);
     const body = await res.json();

@@ -1,14 +1,22 @@
-import { describe, it, expect, assert } from "vitest";
+import { describe, it, expect, assert, beforeEach } from "vitest";
 import { testClient } from "hono/testing";
 import app from "./index.ts";
+import { seedTestApiKey, authHeaders } from "./test/helpers.ts";
 
 describe("POST /api/keys", () => {
   const client = testClient(app);
 
+  beforeEach(() => {
+    seedTestApiKey();
+  });
+
   it("should create an API key with a name", async () => {
-    const res = await client.api.keys.$post({
-      json: { name: "My App" },
-    });
+    const res = await client.api.keys.$post(
+      {
+        json: { name: "My App" },
+      },
+      { headers: authHeaders }
+    );
 
     expect(res.status).toBe(201);
 
@@ -23,9 +31,12 @@ describe("POST /api/keys", () => {
   });
 
   it("should create an API key without a name", async () => {
-    const res = await client.api.keys.$post({
-      json: {},
-    });
+    const res = await client.api.keys.$post(
+      {
+        json: {},
+      },
+      { headers: authHeaders }
+    );
 
     expect(res.status).toBe(201);
 
@@ -40,12 +51,18 @@ describe("POST /api/keys", () => {
   });
 
   it("should return a unique key each time", async () => {
-    const res1 = await client.api.keys.$post({
-      json: { name: "App 1" },
-    });
-    const res2 = await client.api.keys.$post({
-      json: { name: "App 2" },
-    });
+    const res1 = await client.api.keys.$post(
+      {
+        json: { name: "App 1" },
+      },
+      { headers: authHeaders }
+    );
+    const res2 = await client.api.keys.$post(
+      {
+        json: { name: "App 2" },
+      },
+      { headers: authHeaders }
+    );
 
     expect(res1.status).toBe(201);
     expect(res2.status).toBe(201);

@@ -1,18 +1,26 @@
-import { describe, it, expect, assert } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { testClient } from "hono/testing";
 import { customAlphabet } from "nanoid";
 import app from "./index.ts";
+import { seedTestApiKey, authHeaders } from "./test/helpers.ts";
 
 const nanoid = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 7);
 
 describe("GET /api/links/:id/qr", () => {
   const client = testClient(app);
 
+  beforeEach(() => {
+    seedTestApiKey();
+  });
+
   it("should return 404 for non-existent link", async () => {
-    const res = await client.api.links[":id"].qr.$get({
-      param: { id: "nonexistent" },
-      query: {},
-    });
+    const res = await client.api.links[":id"].qr.$get(
+      {
+        param: { id: "nonexistent" },
+        query: {},
+      },
+      { headers: authHeaders }
+    );
     expect(res.status).toBe(404);
 
     const body = (await res.json()) as { error: string; code: string };
@@ -21,19 +29,25 @@ describe("GET /api/links/:id/qr", () => {
 
   it("should return PNG image for existing link", async () => {
     const slug = `qr-test-${nanoid()}`;
-    const createRes = await client.api.links.$post({
-      json: {
-        url: "https://example.com/qr-test",
-        slug,
+    const createRes = await client.api.links.$post(
+      {
+        json: {
+          url: "https://example.com/qr-test",
+          slug,
+        },
       },
-    });
+      { headers: authHeaders }
+    );
     expect(createRes.status).toBe(201);
     const link = await createRes.json();
 
-    const qrRes = await client.api.links[":id"].qr.$get({
-      param: { id: link.id },
-      query: {},
-    });
+    const qrRes = await client.api.links[":id"].qr.$get(
+      {
+        param: { id: link.id },
+        query: {},
+      },
+      { headers: authHeaders }
+    );
     expect(qrRes.status).toBe(200);
     expect(qrRes.headers.get("content-type")).toBe("image/png");
 
@@ -50,28 +64,37 @@ describe("GET /api/links/:id/qr", () => {
 
   it("should support custom size parameter", async () => {
     const slug = `qr-size-${nanoid()}`;
-    const createRes = await client.api.links.$post({
-      json: {
-        url: "https://example.com/qr-size-test",
-        slug,
+    const createRes = await client.api.links.$post(
+      {
+        json: {
+          url: "https://example.com/qr-size-test",
+          slug,
+        },
       },
-    });
+      { headers: authHeaders }
+    );
     expect(createRes.status).toBe(201);
     const link = await createRes.json();
 
     // Default size
-    const defaultRes = await client.api.links[":id"].qr.$get({
-      param: { id: link.id },
-      query: {},
-    });
+    const defaultRes = await client.api.links[":id"].qr.$get(
+      {
+        param: { id: link.id },
+        query: {},
+      },
+      { headers: authHeaders }
+    );
     expect(defaultRes.status).toBe(200);
     const defaultBuffer = await defaultRes.arrayBuffer();
 
     // Custom size (larger)
-    const largeRes = await client.api.links[":id"].qr.$get({
-      param: { id: link.id },
-      query: { size: "500" },
-    });
+    const largeRes = await client.api.links[":id"].qr.$get(
+      {
+        param: { id: link.id },
+        query: { size: "500" },
+      },
+      { headers: authHeaders }
+    );
     expect(largeRes.status).toBe(200);
     const largeBuffer = await largeRes.arrayBuffer();
 

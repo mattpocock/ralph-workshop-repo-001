@@ -1,17 +1,25 @@
-import { describe, it, expect, beforeAll, assert } from "vitest";
+import { describe, it, expect, beforeEach, assert } from "vitest";
 import { testClient } from "hono/testing";
 import { customAlphabet } from "nanoid";
 import app from "./index.ts";
+import { seedTestApiKey, authHeaders } from "./test/helpers.ts";
 
 const nanoid = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 7);
 
 describe("GET /api/links", () => {
   const client = testClient(app);
 
+  beforeEach(() => {
+    seedTestApiKey();
+  });
+
   it("should return empty array when no links exist", async () => {
-    const res = await client.api.links.$get({
-      query: {},
-    });
+    const res = await client.api.links.$get(
+      {
+        query: {},
+      },
+      { headers: authHeaders }
+    );
 
     expect(res.status).toBe(200);
 
@@ -31,16 +39,25 @@ describe("GET /api/links", () => {
     const slug1 = `list-test-${nanoid()}`;
     const slug2 = `list-test-${nanoid()}`;
 
-    await client.api.links.$post({
-      json: { url: "https://example1.com", slug: slug1 },
-    });
-    await client.api.links.$post({
-      json: { url: "https://example2.com", slug: slug2 },
-    });
+    await client.api.links.$post(
+      {
+        json: { url: "https://example1.com", slug: slug1 },
+      },
+      { headers: authHeaders }
+    );
+    await client.api.links.$post(
+      {
+        json: { url: "https://example2.com", slug: slug2 },
+      },
+      { headers: authHeaders }
+    );
 
-    const res = await client.api.links.$get({
-      query: {},
-    });
+    const res = await client.api.links.$get(
+      {
+        query: {},
+      },
+      { headers: authHeaders }
+    );
 
     expect(res.status).toBe(200);
 
@@ -67,14 +84,23 @@ describe("GET /api/links", () => {
   it("should paginate results with page and limit params", async () => {
     // Create 3 links
     for (let i = 0; i < 3; i++) {
-      await client.api.links.$post({
-        json: { url: `https://paginate-test-${i}.com`, slug: `paginate-${nanoid()}` },
-      });
+      await client.api.links.$post(
+        {
+          json: {
+            url: `https://paginate-test-${i}.com`,
+            slug: `paginate-${nanoid()}`,
+          },
+        },
+        { headers: authHeaders }
+      );
     }
 
-    const res = await client.api.links.$get({
-      query: { page: "1", limit: "2" },
-    });
+    const res = await client.api.links.$get(
+      {
+        query: { page: "1", limit: "2" },
+      },
+      { headers: authHeaders }
+    );
 
     expect(res.status).toBe(200);
 
@@ -88,25 +114,37 @@ describe("GET /api/links", () => {
   it("should filter links by tag", async () => {
     // Create a tag first
     const tagName = `filter-tag-${nanoid()}`;
-    await client.api.tags.$post({
-      json: { name: tagName },
-    });
+    await client.api.tags.$post(
+      {
+        json: { name: tagName },
+      },
+      { headers: authHeaders }
+    );
 
     // Create a link with the tag
     const slugWithTag = `with-tag-${nanoid()}`;
-    await client.api.links.$post({
-      json: { url: "https://tagged.com", slug: slugWithTag, tags: [tagName] },
-    });
+    await client.api.links.$post(
+      {
+        json: { url: "https://tagged.com", slug: slugWithTag, tags: [tagName] },
+      },
+      { headers: authHeaders }
+    );
 
     // Create a link without the tag
     const slugWithoutTag = `no-tag-${nanoid()}`;
-    await client.api.links.$post({
-      json: { url: "https://untagged.com", slug: slugWithoutTag },
-    });
+    await client.api.links.$post(
+      {
+        json: { url: "https://untagged.com", slug: slugWithoutTag },
+      },
+      { headers: authHeaders }
+    );
 
-    const res = await client.api.links.$get({
-      query: { tag: tagName },
-    });
+    const res = await client.api.links.$get(
+      {
+        query: { tag: tagName },
+      },
+      { headers: authHeaders }
+    );
 
     expect(res.status).toBe(200);
 

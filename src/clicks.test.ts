@@ -1,18 +1,26 @@
-import { describe, it, expect, assert } from "vitest";
+import { describe, it, expect, assert, beforeEach } from "vitest";
 import { testClient } from "hono/testing";
 import { customAlphabet } from "nanoid";
 import app from "./index.ts";
+import { seedTestApiKey, authHeaders } from "./test/helpers.ts";
 
 const nanoid = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 7);
 
 describe("GET /api/links/:id/clicks pagination", () => {
   const client = testClient(app);
 
+  beforeEach(() => {
+    seedTestApiKey();
+  });
+
   it("should return 404 for non-existent link", async () => {
-    const res = await client.api.links[":id"].clicks.$get({
-      param: { id: "nonexistent" },
-      query: {},
-    });
+    const res = await client.api.links[":id"].clicks.$get(
+      {
+        param: { id: "nonexistent" },
+        query: {},
+      },
+      { headers: authHeaders }
+    );
     expect(res.status).toBe(404);
 
     const body = await res.json();
@@ -22,19 +30,25 @@ describe("GET /api/links/:id/clicks pagination", () => {
 
   it("should return pagination info with default values", async () => {
     const slug = `clicks-page-${nanoid()}`;
-    const createRes = await client.api.links.$post({
-      json: {
-        url: "https://example.com/pagination-test",
-        slug,
+    const createRes = await client.api.links.$post(
+      {
+        json: {
+          url: "https://example.com/pagination-test",
+          slug,
+        },
       },
-    });
+      { headers: authHeaders }
+    );
     expect(createRes.status).toBe(201);
     const link = await createRes.json();
 
-    const clicksRes = await client.api.links[":id"].clicks.$get({
-      param: { id: link.id },
-      query: {},
-    });
+    const clicksRes = await client.api.links[":id"].clicks.$get(
+      {
+        param: { id: link.id },
+        query: {},
+      },
+      { headers: authHeaders }
+    );
     expect(clicksRes.status).toBe(200);
 
     const body = await clicksRes.json();
@@ -49,25 +63,31 @@ describe("GET /api/links/:id/clicks pagination", () => {
 
   it("should paginate clicks correctly", async () => {
     const slug = `clicks-multi-${nanoid()}`;
-    const createRes = await client.api.links.$post({
-      json: {
-        url: "https://example.com/multi-page",
-        slug,
+    const createRes = await client.api.links.$post(
+      {
+        json: {
+          url: "https://example.com/multi-page",
+          slug,
+        },
       },
-    });
+      { headers: authHeaders }
+    );
     expect(createRes.status).toBe(201);
     const link = await createRes.json();
 
-    // Generate 5 clicks
+    // Generate 5 clicks (redirect doesn't require auth)
     for (let i = 0; i < 5; i++) {
       await client[":slug"].$get({ param: { slug } });
     }
 
     // Request with limit of 2
-    const page1Res = await client.api.links[":id"].clicks.$get({
-      param: { id: link.id },
-      query: { page: "1", limit: "2" },
-    });
+    const page1Res = await client.api.links[":id"].clicks.$get(
+      {
+        param: { id: link.id },
+        query: { page: "1", limit: "2" },
+      },
+      { headers: authHeaders }
+    );
     expect(page1Res.status).toBe(200);
 
     const page1Body = await page1Res.json();
@@ -81,10 +101,13 @@ describe("GET /api/links/:id/clicks pagination", () => {
     });
 
     // Request page 2
-    const page2Res = await client.api.links[":id"].clicks.$get({
-      param: { id: link.id },
-      query: { page: "2", limit: "2" },
-    });
+    const page2Res = await client.api.links[":id"].clicks.$get(
+      {
+        param: { id: link.id },
+        query: { page: "2", limit: "2" },
+      },
+      { headers: authHeaders }
+    );
     expect(page2Res.status).toBe(200);
 
     const page2Body = await page2Res.json();
@@ -93,10 +116,13 @@ describe("GET /api/links/:id/clicks pagination", () => {
     expect(page2Body.pagination.page).toBe(2);
 
     // Request page 3 (should have 1 click)
-    const page3Res = await client.api.links[":id"].clicks.$get({
-      param: { id: link.id },
-      query: { page: "3", limit: "2" },
-    });
+    const page3Res = await client.api.links[":id"].clicks.$get(
+      {
+        param: { id: link.id },
+        query: { page: "3", limit: "2" },
+      },
+      { headers: authHeaders }
+    );
     expect(page3Res.status).toBe(200);
 
     const page3Body = await page3Res.json();
@@ -108,19 +134,26 @@ describe("GET /api/links/:id/clicks pagination", () => {
 describe("Click recording on redirect", () => {
   const client = testClient(app);
 
+  beforeEach(() => {
+    seedTestApiKey();
+  });
+
   it("should record a click when visiting a short link", async () => {
     // Create a link
     const slug = `click-${nanoid()}`;
-    const createRes = await client.api.links.$post({
-      json: {
-        url: "https://example.com/tracked",
-        slug,
+    const createRes = await client.api.links.$post(
+      {
+        json: {
+          url: "https://example.com/tracked",
+          slug,
+        },
       },
-    });
+      { headers: authHeaders }
+    );
     expect(createRes.status).toBe(201);
     const link = await createRes.json();
 
-    // Visit the redirect endpoint with headers
+    // Visit the redirect endpoint with headers (redirect doesn't require auth)
     const redirectRes = await client[":slug"].$get(
       {
         param: { slug },
@@ -135,10 +168,13 @@ describe("Click recording on redirect", () => {
     expect(redirectRes.status).toBe(302);
 
     // Verify the click was recorded via the API
-    const clicksRes = await client.api.links[":id"].clicks.$get({
-      param: { id: link.id },
-      query: {},
-    });
+    const clicksRes = await client.api.links[":id"].clicks.$get(
+      {
+        param: { id: link.id },
+        query: {},
+      },
+      { headers: authHeaders }
+    );
     expect(clicksRes.status).toBe(200);
 
     const clicksBody = await clicksRes.json();
@@ -155,25 +191,31 @@ describe("Click recording on redirect", () => {
   it("should record multiple clicks", async () => {
     // Create a link
     const slug = `multi-${nanoid()}`;
-    const createRes = await client.api.links.$post({
-      json: {
-        url: "https://example.com/multi-click",
-        slug,
+    const createRes = await client.api.links.$post(
+      {
+        json: {
+          url: "https://example.com/multi-click",
+          slug,
+        },
       },
-    });
+      { headers: authHeaders }
+    );
     expect(createRes.status).toBe(201);
     const link = await createRes.json();
 
-    // Visit the redirect endpoint multiple times
+    // Visit the redirect endpoint multiple times (redirect doesn't require auth)
     await client[":slug"].$get({ param: { slug } });
     await client[":slug"].$get({ param: { slug } });
     await client[":slug"].$get({ param: { slug } });
 
     // Verify all clicks were recorded
-    const clicksRes = await client.api.links[":id"].clicks.$get({
-      param: { id: link.id },
-      query: {},
-    });
+    const clicksRes = await client.api.links[":id"].clicks.$get(
+      {
+        param: { id: link.id },
+        query: {},
+      },
+      { headers: authHeaders }
+    );
     expect(clicksRes.status).toBe(200);
 
     const clicksBody = await clicksRes.json();

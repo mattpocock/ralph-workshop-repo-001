@@ -1,30 +1,41 @@
-import { describe, it, expect, assert } from "vitest";
+import { describe, it, expect, assert, beforeEach } from "vitest";
 import { testClient } from "hono/testing";
 import app from "./index.ts";
 import { customAlphabet } from "nanoid";
+import { seedTestApiKey, authHeaders } from "./test/helpers.ts";
 
 const nanoid = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 7);
 
 describe("PATCH /api/links/:id", () => {
   const client = testClient(app);
 
+  beforeEach(() => {
+    seedTestApiKey();
+  });
+
   it("should update the target URL", async () => {
     // Create a link
-    const createRes = await client.api.links.$post({
-      json: {
-        url: "https://example.com/original",
+    const createRes = await client.api.links.$post(
+      {
+        json: {
+          url: "https://example.com/original",
+        },
       },
-    });
+      { headers: authHeaders }
+    );
     expect(createRes.status).toBe(201);
     const created = await createRes.json();
 
     // Update the URL
-    const updateRes = await client.api.links[":id"].$patch({
-      param: { id: created.id },
-      json: {
-        url: "https://example.com/updated",
+    const updateRes = await client.api.links[":id"].$patch(
+      {
+        param: { id: created.id },
+        json: {
+          url: "https://example.com/updated",
+        },
       },
-    });
+      { headers: authHeaders }
+    );
     expect(updateRes.status).toBe(200);
     const updated = await updateRes.json();
     assert("targetUrl" in updated);
@@ -34,22 +45,28 @@ describe("PATCH /api/links/:id", () => {
 
   it("should update the slug", async () => {
     // Create a link
-    const createRes = await client.api.links.$post({
-      json: {
-        url: "https://example.com/slug-test",
+    const createRes = await client.api.links.$post(
+      {
+        json: {
+          url: "https://example.com/slug-test",
+        },
       },
-    });
+      { headers: authHeaders }
+    );
     expect(createRes.status).toBe(201);
     const created = await createRes.json();
 
     // Update the slug with a unique value
     const newSlug = `new-custom-slug-${Date.now()}`;
-    const updateRes = await client.api.links[":id"].$patch({
-      param: { id: created.id },
-      json: {
-        slug: newSlug,
+    const updateRes = await client.api.links[":id"].$patch(
+      {
+        param: { id: created.id },
+        json: {
+          slug: newSlug,
+        },
       },
-    });
+      { headers: authHeaders }
+    );
     expect(updateRes.status).toBe(200);
     const updated = await updateRes.json();
     assert("slug" in updated);
@@ -58,12 +75,15 @@ describe("PATCH /api/links/:id", () => {
   });
 
   it("should return 404 for non-existent link", async () => {
-    const res = await client.api.links[":id"].$patch({
-      param: { id: "non-existent-id" },
-      json: {
-        url: "https://example.com/test",
+    const res = await client.api.links[":id"].$patch(
+      {
+        param: { id: "non-existent-id" },
+        json: {
+          url: "https://example.com/test",
+        },
       },
-    });
+      { headers: authHeaders }
+    );
 
     expect(res.status).toBe(404);
     const body = await res.json();
@@ -76,30 +96,39 @@ describe("PATCH /api/links/:id", () => {
   it("should return 409 for duplicate slug", async () => {
     // Create first link with a custom slug
     const uniqueSlug = `unique-slug-${Date.now()}`;
-    const createRes1 = await client.api.links.$post({
-      json: {
-        url: "https://example.com/first",
-        slug: uniqueSlug,
+    const createRes1 = await client.api.links.$post(
+      {
+        json: {
+          url: "https://example.com/first",
+          slug: uniqueSlug,
+        },
       },
-    });
+      { headers: authHeaders }
+    );
     expect(createRes1.status).toBe(201);
 
     // Create second link
-    const createRes2 = await client.api.links.$post({
-      json: {
-        url: "https://example.com/second",
+    const createRes2 = await client.api.links.$post(
+      {
+        json: {
+          url: "https://example.com/second",
+        },
       },
-    });
+      { headers: authHeaders }
+    );
     expect(createRes2.status).toBe(201);
     const created2 = await createRes2.json();
 
     // Try to update second link with the first link's slug
-    const updateRes = await client.api.links[":id"].$patch({
-      param: { id: created2.id },
-      json: {
-        slug: uniqueSlug,
+    const updateRes = await client.api.links[":id"].$patch(
+      {
+        param: { id: created2.id },
+        json: {
+          slug: uniqueSlug,
+        },
       },
-    });
+      { headers: authHeaders }
+    );
 
     expect(updateRes.status).toBe(409);
     const body = await updateRes.json();
@@ -112,29 +141,35 @@ describe("PATCH /api/links/:id", () => {
   it("should update the password", async () => {
     // Create a link without password with unique slug
     const slug = `pwd-test-${nanoid()}`;
-    const createRes = await client.api.links.$post({
-      json: {
-        url: "https://example.com/password-test",
-        slug,
+    const createRes = await client.api.links.$post(
+      {
+        json: {
+          url: "https://example.com/password-test",
+          slug,
+        },
       },
-    });
+      { headers: authHeaders }
+    );
     expect(createRes.status).toBe(201);
     const created = await createRes.json();
     expect(created.hasPassword).toBe(false);
 
     // Update with a password
-    const updateRes = await client.api.links[":id"].$patch({
-      param: { id: created.id },
-      json: {
-        password: "newsecret",
+    const updateRes = await client.api.links[":id"].$patch(
+      {
+        param: { id: created.id },
+        json: {
+          password: "newsecret",
+        },
       },
-    });
+      { headers: authHeaders }
+    );
     expect(updateRes.status).toBe(200);
     const updated = await updateRes.json();
     assert("hasPassword" in updated);
     expect(updated.hasPassword).toBe(true);
 
-    // Verify the password works on redirect
+    // Verify the password works on redirect (redirect doesn't require auth)
     const redirectWithoutPass = await client[":slug"].$get({
       param: { slug },
     });
@@ -147,23 +182,29 @@ describe("PATCH /api/links/:id", () => {
 
   it("should update expiration", async () => {
     // Create a link without expiration
-    const createRes = await client.api.links.$post({
-      json: {
-        url: "https://example.com/expiration-test",
+    const createRes = await client.api.links.$post(
+      {
+        json: {
+          url: "https://example.com/expiration-test",
+        },
       },
-    });
+      { headers: authHeaders }
+    );
     expect(createRes.status).toBe(201);
     const created = await createRes.json();
     expect(created.expiresAt).toBe(null);
 
     // Update with expiration
     const futureTime = Date.now() + 3600000; // 1 hour from now
-    const updateRes = await client.api.links[":id"].$patch({
-      param: { id: created.id },
-      json: {
-        expiresAt: futureTime,
+    const updateRes = await client.api.links[":id"].$patch(
+      {
+        param: { id: created.id },
+        json: {
+          expiresAt: futureTime,
+        },
       },
-    });
+      { headers: authHeaders }
+    );
     expect(updateRes.status).toBe(200);
     const updated = await updateRes.json();
     assert("expiresAt" in updated);
@@ -172,27 +213,39 @@ describe("PATCH /api/links/:id", () => {
 
   it("should update tags", async () => {
     // Create tags first
-    await client.api.tags.$post({ json: { name: "update-tag-1" } });
-    await client.api.tags.$post({ json: { name: "update-tag-2" } });
+    await client.api.tags.$post(
+      { json: { name: "update-tag-1" } },
+      { headers: authHeaders }
+    );
+    await client.api.tags.$post(
+      { json: { name: "update-tag-2" } },
+      { headers: authHeaders }
+    );
 
     // Create a link with one tag
-    const createRes = await client.api.links.$post({
-      json: {
-        url: "https://example.com/tags-test",
-        tags: ["update-tag-1"],
+    const createRes = await client.api.links.$post(
+      {
+        json: {
+          url: "https://example.com/tags-test",
+          tags: ["update-tag-1"],
+        },
       },
-    });
+      { headers: authHeaders }
+    );
     expect(createRes.status).toBe(201);
     const created = await createRes.json();
     expect(created.tags).toEqual(["update-tag-1"]);
 
     // Update tags
-    const updateRes = await client.api.links[":id"].$patch({
-      param: { id: created.id },
-      json: {
-        tags: ["update-tag-2"],
+    const updateRes = await client.api.links[":id"].$patch(
+      {
+        param: { id: created.id },
+        json: {
+          tags: ["update-tag-2"],
+        },
       },
-    });
+      { headers: authHeaders }
+    );
     expect(updateRes.status).toBe(200);
     const updated = await updateRes.json();
     assert("tags" in updated);
