@@ -59,6 +59,7 @@ describe("DELETE /api/links/:id", () => {
     // Verify click was recorded
     const clicksRes = await client.api.links[":id"].clicks.$get({
       param: { id: created.id },
+      query: {},
     });
     expect(clicksRes.status).toBe(200);
     const clicksBody = await clicksRes.json();
@@ -74,6 +75,7 @@ describe("DELETE /api/links/:id", () => {
     // Verify clicks endpoint returns 404 (link gone)
     const clicksAfterRes = await client.api.links[":id"].clicks.$get({
       param: { id: created.id },
+      query: {},
     });
     expect(clicksAfterRes.status).toBe(404);
   });
