@@ -31,6 +31,22 @@ const app = new Hono()
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(id, slug, body.url, passwordHash, body.expiresAt || null, now, now);
 
+    // Associate tags with the link
+    const tagNames = body.tags || [];
+    if (tagNames.length > 0) {
+      const insertLinkTag = db.prepare(
+        "INSERT INTO link_tags (link_id, tag_id) VALUES (?, ?)"
+      );
+      const getTagId = db.prepare("SELECT id FROM tags WHERE name = ?");
+
+      for (const tagName of tagNames) {
+        const tag = getTagId.get(tagName) as { id: string } | undefined;
+        if (tag) {
+          insertLinkTag.run(id, tag.id);
+        }
+      }
+    }
+
     return c.json(
       {
         id,
@@ -39,7 +55,7 @@ const app = new Hono()
         targetUrl: body.url,
         expiresAt: body.expiresAt || null,
         hasPassword: !!body.password,
-        tags: body.tags || [],
+        tags: tagNames,
         createdAt: now,
         updatedAt: now,
       },
@@ -106,6 +122,15 @@ const app = new Hono()
       return c.json({ error: "Link not found", code: "NOT_FOUND" }, 404);
     }
 
+    // Fetch tags for this link
+    const tags = db
+      .prepare(
+        `SELECT t.name FROM tags t
+         INNER JOIN link_tags lt ON t.id = lt.tag_id
+         WHERE lt.link_id = ?`
+      )
+      .all(id) as Array<{ name: string }>;
+
     return c.json({
       id: link.id,
       slug: link.slug,
@@ -113,7 +138,7 @@ const app = new Hono()
       targetUrl: link.target_url,
       expiresAt: link.expires_at,
       hasPassword: !!link.password_hash,
-      tags: [],
+      tags: tags.map((t) => t.name),
       createdAt: link.created_at,
       updatedAt: link.updated_at,
     });
