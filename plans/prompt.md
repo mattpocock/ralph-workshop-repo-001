@@ -34,7 +34,7 @@ Explore the repo and fill your context window with relevant information that wil
 
 First, write tests that fail because the feature is not yet implemented.
 
-Run the tests to check that they fail.
+Run the tests to check that they fail using `npm run test`.
 
 Tests should focus on the publicly accessible interface of the system. They should test user behavior, not internal implementation details.
 
@@ -63,7 +63,6 @@ If anything blocks your completion of the task, output <promise>ABORT</promise>.
 
 Before committing, run the feedback loops:
 
-- `npm run test` to run the tests
 - `npm run typecheck` to run the type checker
 
 # COMMIT
