@@ -4,6 +4,7 @@ import { zValidator } from "@hono/zod-validator";
 import { nanoid } from "nanoid";
 import { getDatabase } from "./db/index.ts";
 import { createLinkSchema } from "./schemas/link.ts";
+import { updateClickGeo } from "./services/geo.ts";
 
 const BASE_URL = process.env["BASE_URL"] || "http://localhost:3000";
 
@@ -98,6 +99,13 @@ const app = new Hono()
       `INSERT INTO clicks (id, link_id, timestamp, ip, user_agent, referrer)
        VALUES (?, ?, ?, ?, ?, ?)`
     ).run(clickId, link.id, timestamp, ip, userAgent, referrer);
+
+    // Async geo lookup - fire and forget
+    if (ip) {
+      updateClickGeo(clickId, ip).catch(() => {
+        // Silently ignore geo lookup failures
+      });
+    }
 
     return c.redirect(link.target_url, 302);
   });
