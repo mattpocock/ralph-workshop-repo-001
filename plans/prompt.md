@@ -57,12 +57,6 @@ Make a git commit. The commit message must:
 
 Keep it concise.
 
-# THE ISSUE
-
-If the task is complete, close the original GitHub issue.
-
-If the task is not complete, leave a comment on the GitHub issue with what was done.
-
 # FINAL RULES
 
 ONLY WORK ON A SINGLE TASK.
