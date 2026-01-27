@@ -12,6 +12,7 @@ import {
   qrQuerySchema,
 } from "./schemas/link.ts";
 import { createTagSchema } from "./schemas/tag.ts";
+import { createApiKeySchema } from "./schemas/apiKey.ts";
 import { updateClickGeo } from "./services/geo.ts";
 
 const BASE_URL = process.env["BASE_URL"] || "http://localhost:3000";
@@ -508,6 +509,28 @@ const app = new Hono()
     }
 
     return c.json({ id, name: body.name }, 201);
+  })
+  .post("/api/keys", zValidator("json", createApiKeySchema), (c) => {
+    const body = c.req.valid("json");
+    const db = getDatabase();
+
+    const id = nanoid();
+    const key = `sk_live_${nanoid(24)}`;
+    const now = Date.now();
+
+    db.prepare(
+      "INSERT INTO api_keys (id, key, name, created_at) VALUES (?, ?, ?, ?)"
+    ).run(id, key, body.name || null, now);
+
+    return c.json(
+      {
+        id,
+        key,
+        name: body.name || null,
+        createdAt: now,
+      },
+      201
+    );
   })
   .get("/:slug", async (c) => {
     const slug = c.req.param("slug");
