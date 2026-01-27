@@ -177,6 +177,19 @@ const app = new Hono()
       })),
     });
   })
+  .delete("/api/links/:id", (c) => {
+    const id = c.req.param("id");
+    const db = getDatabase();
+
+    const link = db.prepare("SELECT id FROM links WHERE id = ?").get(id);
+    if (!link) {
+      return c.json({ error: "Link not found", code: "NOT_FOUND" }, 404);
+    }
+
+    db.prepare("DELETE FROM links WHERE id = ?").run(id);
+
+    return c.body(null, 204);
+  })
   .get("/api/links/:id", (c) => {
     const id = c.req.param("id");
     const db = getDatabase();
