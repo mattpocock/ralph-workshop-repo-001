@@ -7,7 +7,7 @@
     "cherry-pick": "ai-hero-cli cherry-pick --branch=live-run-through",
     "reset": "ai-hero-cli reset --branch=live-run-through",
     "pull": "ai-hero-cli pull",
-    "dev": "echo 'Not implemented yet'",
+    "dev": "tsx watch src/index.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "ralph:hitl": "chmod +x plans/once.sh && plans/once.sh",
@@ -28,12 +28,25 @@
     "tabWidth": 2
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.0.3",
+    "@types/qrcode": "^1.5.6",
     "ai-hero-cli": "^0.2.15",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
     "prettier": "^3.7.4",
     "typescript": "^5.9.3",
     "vitest": "^4.0.16"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.9",
+    "bcrypt": "^6.0.0",
+    "better-sqlite3": "^12.6.2",
+    "hono": "^4.11.7",
+    "nanoid": "^5.1.6",
+    "qrcode": "^1.5.4",
+    "tsx": "^4.21.0",
+    "zod": "^4.3.6"
   }
 }
