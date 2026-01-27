@@ -39,17 +39,65 @@ const app = new Hono()
       201
     );
   })
+  .get("/api/links/:id/clicks", (c) => {
+    const id = c.req.param("id");
+    const db = getDatabase();
+
+    const link = db.prepare("SELECT id FROM links WHERE id = ?").get(id);
+    if (!link) {
+      return c.json({ error: "Link not found", code: "NOT_FOUND" }, 404);
+    }
+
+    const clicks = db
+      .prepare(
+        `SELECT id, timestamp, ip, user_agent, referrer, country, city
+         FROM clicks WHERE link_id = ? ORDER BY timestamp DESC`
+      )
+      .all(id) as Array<{
+      id: string;
+      timestamp: number;
+      ip: string | null;
+      user_agent: string | null;
+      referrer: string | null;
+      country: string | null;
+      city: string | null;
+    }>;
+
+    return c.json({
+      clicks: clicks.map((click) => ({
+        id: click.id,
+        timestamp: click.timestamp,
+        ip: click.ip,
+        userAgent: click.user_agent,
+        referrer: click.referrer,
+        country: click.country,
+        city: click.city,
+      })),
+    });
+  })
   .get("/:slug", (c) => {
     const slug = c.req.param("slug");
     const db = getDatabase();
 
     const link = db
-      .prepare("SELECT target_url FROM links WHERE slug = ?")
-      .get(slug) as { target_url: string } | undefined;
+      .prepare("SELECT id, target_url FROM links WHERE slug = ?")
+      .get(slug) as { id: string; target_url: string } | undefined;
 
     if (!link) {
       return c.json({ error: "Link not found", code: "NOT_FOUND" }, 404);
     }
+
+    // Record click
+    const clickId = nanoid();
+    const timestamp = Date.now();
+    const ip = c.req.header("x-forwarded-for") || c.req.header("x-real-ip") || null;
+    const userAgent = c.req.header("user-agent") || null;
+    const referrer = c.req.header("referer") || null;
+
+    db.prepare(
+      `INSERT INTO clicks (id, link_id, timestamp, ip, user_agent, referrer)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).run(clickId, link.id, timestamp, ip, userAgent, referrer);
 
     return c.redirect(link.target_url, 302);
   });
