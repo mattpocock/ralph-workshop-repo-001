@@ -44,7 +44,9 @@ Next, implement the minimum amount of code necessary to make the tests pass.
 
 # EXECUTION: REFACTOR
 
-Finally, ALWAYS refactor the code to improve its structure.
+Finally, ALWAYS refactor the code to improve its structure. Don't just refactor the new code - look for opportunities to improve existing code as well.
+
+Ensure the code adheres to best practices:
 
 - Code is clear and readable
 - Functions and variables are well-named
