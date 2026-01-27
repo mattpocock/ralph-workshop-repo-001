@@ -86,13 +86,18 @@ const app = new Hono()
     const db = getDatabase();
 
     const link = db
-      .prepare("SELECT id, target_url, password_hash FROM links WHERE slug = ?")
+      .prepare("SELECT id, target_url, password_hash, expires_at FROM links WHERE slug = ?")
       .get(slug) as
-      | { id: string; target_url: string; password_hash: string | null }
+      | { id: string; target_url: string; password_hash: string | null; expires_at: number | null }
       | undefined;
 
     if (!link) {
       return c.json({ error: "Link not found", code: "NOT_FOUND" }, 404);
+    }
+
+    // Check expiration
+    if (link.expires_at && link.expires_at < Date.now()) {
+      return c.json({ error: "Link expired", code: "GONE" }, 410);
     }
 
     // Check password protection
