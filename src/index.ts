@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import { zValidator } from "@hono/zod-validator";
 import { nanoid } from "nanoid";
+import bcrypt from "bcrypt";
 import { getDatabase } from "./db/index.ts";
 import { createLinkSchema } from "./schemas/link.ts";
 import { updateClickGeo } from "./services/geo.ts";
@@ -12,7 +13,7 @@ const app = new Hono()
   .get("/api/health", (c) => {
     return c.json({ status: "ok" });
   })
-  .post("/api/links", zValidator("json", createLinkSchema), (c) => {
+  .post("/api/links", zValidator("json", createLinkSchema), async (c) => {
     const body = c.req.valid("json");
     const db = getDatabase();
 
@@ -20,10 +21,14 @@ const app = new Hono()
     const slug = body.slug || nanoid(7);
     const now = Date.now();
 
+    const passwordHash = body.password
+      ? await bcrypt.hash(body.password, 10)
+      : null;
+
     db.prepare(`
-      INSERT INTO links (id, slug, target_url, expires_at, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(id, slug, body.url, body.expiresAt || null, now, now);
+      INSERT INTO links (id, slug, target_url, password_hash, expires_at, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(id, slug, body.url, passwordHash, body.expiresAt || null, now, now);
 
     return c.json(
       {
@@ -32,7 +37,7 @@ const app = new Hono()
         shortUrl: `${BASE_URL}/${slug}`,
         targetUrl: body.url,
         expiresAt: body.expiresAt || null,
-        hasPassword: false,
+        hasPassword: !!body.password,
         tags: body.tags || [],
         createdAt: now,
         updatedAt: now,
@@ -76,22 +81,43 @@ const app = new Hono()
       })),
     });
   })
-  .get("/:slug", (c) => {
+  .get("/:slug", async (c) => {
     const slug = c.req.param("slug");
     const db = getDatabase();
 
     const link = db
-      .prepare("SELECT id, target_url FROM links WHERE slug = ?")
-      .get(slug) as { id: string; target_url: string } | undefined;
+      .prepare("SELECT id, target_url, password_hash FROM links WHERE slug = ?")
+      .get(slug) as
+      | { id: string; target_url: string; password_hash: string | null }
+      | undefined;
 
     if (!link) {
       return c.json({ error: "Link not found", code: "NOT_FOUND" }, 404);
     }
 
+    // Check password protection
+    if (link.password_hash) {
+      const password = c.req.query("password");
+      if (!password) {
+        return c.json(
+          { error: "Password required", code: "UNAUTHORIZED" },
+          401
+        );
+      }
+      const isValid = await bcrypt.compare(password, link.password_hash);
+      if (!isValid) {
+        return c.json(
+          { error: "Invalid password", code: "UNAUTHORIZED" },
+          401
+        );
+      }
+    }
+
     // Record click
     const clickId = nanoid();
     const timestamp = Date.now();
-    const ip = c.req.header("x-forwarded-for") || c.req.header("x-real-ip") || null;
+    const ip =
+      c.req.header("x-forwarded-for") || c.req.header("x-real-ip") || null;
     const userAgent = c.req.header("user-agent") || null;
     const referrer = c.req.header("referer") || null;
 
