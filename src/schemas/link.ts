@@ -43,3 +43,17 @@ export const qrQuerySchema = z.object({
     .optional()
     .transform((val) => (val ? parseInt(val, 10) : 300)),
 });
+
+export const bulkCreateLinkSchema = z.object({
+  links: z.array(
+    z.object({
+      url: z.string(),
+      slug: z
+        .string()
+        .min(3)
+        .max(50)
+        .regex(/^[a-z0-9-]+$/)
+        .optional(),
+    })
+  ),
+});

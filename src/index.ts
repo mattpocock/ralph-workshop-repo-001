@@ -10,6 +10,7 @@ import {
   updateLinkSchema,
   paginationSchema,
   qrQuerySchema,
+  bulkCreateLinkSchema,
 } from "./schemas/link.ts";
 import { createTagSchema } from "./schemas/tag.ts";
 import { createApiKeySchema } from "./schemas/apiKey.ts";
@@ -72,6 +73,54 @@ const app = new Hono()
       },
       201
     );
+  })
+  .post("/api/links/bulk", zValidator("json", bulkCreateLinkSchema), (c) => {
+    const body = c.req.valid("json");
+    const db = getDatabase();
+
+    const created: Array<{ id: string; slug: string; shortUrl: string }> = [];
+    const errors: Array<{ index: number; error: string }> = [];
+
+    const insertLink = db.prepare(
+      `INSERT INTO links (id, slug, target_url, password_hash, expires_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    );
+
+    for (let i = 0; i < body.links.length; i++) {
+      const link = body.links[i]!;
+
+      // Validate URL
+      try {
+        new URL(link.url);
+      } catch {
+        errors.push({ index: i, error: "Invalid URL" });
+        continue;
+      }
+
+      const id = nanoid();
+      const slug = link.slug || nanoid(7);
+      const now = Date.now();
+
+      try {
+        insertLink.run(id, slug, link.url, null, null, now, now);
+        created.push({
+          id,
+          slug,
+          shortUrl: `${BASE_URL}/${slug}`,
+        });
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message.includes("UNIQUE constraint failed")
+        ) {
+          errors.push({ index: i, error: "Slug already exists" });
+        } else {
+          errors.push({ index: i, error: "Failed to create link" });
+        }
+      }
+    }
+
+    return c.json({ created, errors }, 201);
   })
   .get("/api/links", (c) => {
     const db = getDatabase();
