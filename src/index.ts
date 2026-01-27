@@ -141,6 +141,92 @@ const app = new Hono()
       },
     });
   })
+  .get("/api/links/:id/stats", (c) => {
+    const id = c.req.param("id");
+    const db = getDatabase();
+
+    const link = db.prepare("SELECT id FROM links WHERE id = ?").get(id);
+    if (!link) {
+      return c.json({ error: "Link not found", code: "NOT_FOUND" }, 404);
+    }
+
+    // Total clicks
+    const totalResult = db
+      .prepare("SELECT COUNT(*) as total FROM clicks WHERE link_id = ?")
+      .get(id) as { total: number };
+    const totalClicks = totalResult.total;
+
+    // Clicks by day
+    const clicksByDay = db
+      .prepare(
+        `SELECT date(timestamp / 1000, 'unixepoch') as date, COUNT(*) as count
+         FROM clicks WHERE link_id = ?
+         GROUP BY date ORDER BY date DESC`
+      )
+      .all(id) as Array<{ date: string; count: number }>;
+
+    // Clicks by country
+    const clicksByCountry = db
+      .prepare(
+        `SELECT country, COUNT(*) as count
+         FROM clicks WHERE link_id = ? AND country IS NOT NULL
+         GROUP BY country ORDER BY count DESC`
+      )
+      .all(id) as Array<{ country: string; count: number }>;
+
+    // Top referrers - aggregate by domain
+    const rawReferrers = db
+      .prepare(
+        `SELECT referrer, COUNT(*) as count
+         FROM clicks WHERE link_id = ?
+         GROUP BY referrer ORDER BY count DESC`
+      )
+      .all(id) as Array<{ referrer: string | null; count: number }>;
+
+    // Aggregate referrers by domain
+    const referrerCounts = new Map<string, number>();
+    for (const row of rawReferrers) {
+      let domain = "direct";
+      if (row.referrer) {
+        try {
+          domain = new URL(row.referrer).hostname;
+        } catch {
+          domain = row.referrer;
+        }
+      }
+      referrerCounts.set(domain, (referrerCounts.get(domain) || 0) + row.count);
+    }
+    const topReferrers = Array.from(referrerCounts.entries())
+      .map(([referrer, count]) => ({ referrer, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Recent clicks
+    const recentClicks = db
+      .prepare(
+        `SELECT timestamp, country, city, referrer
+         FROM clicks WHERE link_id = ?
+         ORDER BY timestamp DESC LIMIT 10`
+      )
+      .all(id) as Array<{
+      timestamp: number;
+      country: string | null;
+      city: string | null;
+      referrer: string | null;
+    }>;
+
+    return c.json({
+      totalClicks,
+      clicksByDay,
+      clicksByCountry,
+      topReferrers,
+      recentClicks: recentClicks.map((click) => ({
+        timestamp: click.timestamp,
+        country: click.country,
+        city: click.city,
+        referrer: click.referrer,
+      })),
+    });
+  })
   .get("/api/links/:id/clicks", (c) => {
     const id = c.req.param("id");
     const db = getDatabase();
