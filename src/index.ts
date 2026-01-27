@@ -4,7 +4,7 @@ import { zValidator } from "@hono/zod-validator";
 import { nanoid } from "nanoid";
 import bcrypt from "bcrypt";
 import { getDatabase } from "./db/index.ts";
-import { createLinkSchema } from "./schemas/link.ts";
+import { createLinkSchema, updateLinkSchema } from "./schemas/link.ts";
 import { createTagSchema } from "./schemas/tag.ts";
 import { updateClickGeo } from "./services/geo.ts";
 
@@ -175,6 +175,112 @@ const app = new Hono()
         country: click.country,
         city: click.city,
       })),
+    });
+  })
+  .patch("/api/links/:id", zValidator("json", updateLinkSchema), async (c) => {
+    const id = c.req.param("id");
+    const body = c.req.valid("json");
+    const db = getDatabase();
+
+    const link = db
+      .prepare("SELECT id, slug FROM links WHERE id = ?")
+      .get(id) as { id: string; slug: string } | undefined;
+    if (!link) {
+      return c.json({ error: "Link not found", code: "NOT_FOUND" }, 404);
+    }
+
+    const now = Date.now();
+    const updates: string[] = ["updated_at = ?"];
+    const values: (string | number | null)[] = [now];
+
+    if (body.url !== undefined) {
+      updates.push("target_url = ?");
+      values.push(body.url);
+    }
+
+    if (body.slug !== undefined) {
+      // Check for duplicate slug
+      const existingSlug = db
+        .prepare("SELECT id FROM links WHERE slug = ? AND id != ?")
+        .get(body.slug, id);
+      if (existingSlug) {
+        return c.json({ error: "Slug already exists", code: "CONFLICT" }, 409);
+      }
+      updates.push("slug = ?");
+      values.push(body.slug);
+    }
+
+    if (body.expiresAt !== undefined) {
+      updates.push("expires_at = ?");
+      values.push(body.expiresAt);
+    }
+
+    if (body.password !== undefined) {
+      const passwordHash = await bcrypt.hash(body.password, 10);
+      updates.push("password_hash = ?");
+      values.push(passwordHash);
+    }
+
+    values.push(id);
+    db.prepare(`UPDATE links SET ${updates.join(", ")} WHERE id = ?`).run(
+      ...values
+    );
+
+    // Handle tags update
+    if (body.tags !== undefined) {
+      // Remove existing tag associations
+      db.prepare("DELETE FROM link_tags WHERE link_id = ?").run(id);
+
+      // Add new tag associations
+      if (body.tags.length > 0) {
+        const insertLinkTag = db.prepare(
+          "INSERT INTO link_tags (link_id, tag_id) VALUES (?, ?)"
+        );
+        const getTagId = db.prepare("SELECT id FROM tags WHERE name = ?");
+
+        for (const tagName of body.tags) {
+          const tag = getTagId.get(tagName) as { id: string } | undefined;
+          if (tag) {
+            insertLinkTag.run(id, tag.id);
+          }
+        }
+      }
+    }
+
+    // Fetch the updated link
+    const updatedLink = db
+      .prepare(
+        "SELECT id, slug, target_url, password_hash, expires_at, created_at, updated_at FROM links WHERE id = ?"
+      )
+      .get(id) as {
+      id: string;
+      slug: string;
+      target_url: string;
+      password_hash: string | null;
+      expires_at: number | null;
+      created_at: number;
+      updated_at: number;
+    };
+
+    // Fetch tags for this link
+    const tags = db
+      .prepare(
+        `SELECT t.name FROM tags t
+         INNER JOIN link_tags lt ON t.id = lt.tag_id
+         WHERE lt.link_id = ?`
+      )
+      .all(id) as Array<{ name: string }>;
+
+    return c.json({
+      id: updatedLink.id,
+      slug: updatedLink.slug,
+      shortUrl: `${BASE_URL}/${updatedLink.slug}`,
+      targetUrl: updatedLink.target_url,
+      expiresAt: updatedLink.expires_at,
+      hasPassword: !!updatedLink.password_hash,
+      tags: tags.map((t) => t.name),
+      createdAt: updatedLink.created_at,
+      updatedAt: updatedLink.updated_at,
     });
   })
   .delete("/api/links/:id", (c) => {
