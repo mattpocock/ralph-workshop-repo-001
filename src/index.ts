@@ -532,6 +532,19 @@ const app = new Hono()
       201
     );
   })
+  .delete("/api/keys/:id", (c) => {
+    const id = c.req.param("id");
+    const db = getDatabase();
+
+    const apiKey = db.prepare("SELECT id FROM api_keys WHERE id = ?").get(id);
+    if (!apiKey) {
+      return c.json({ error: "API key not found", code: "NOT_FOUND" }, 404);
+    }
+
+    db.prepare("DELETE FROM api_keys WHERE id = ?").run(id);
+
+    return c.body(null, 204);
+  })
   .get("/:slug", async (c) => {
     const slug = c.req.param("slug");
     const db = getDatabase();
