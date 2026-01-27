@@ -46,19 +46,14 @@ Next, implement the minimum amount of code necessary to make the tests pass.
 
 Finally, ALWAYS refactor the code to improve its structure.
 
-- Break code out into separate files and functions
-- Break tests into separate files as needed
-- Find shared utilities across files and move them to common utility files
-
-This codebase will outlive you. Every shortcut you take becomes
-someone else's burden. Every hack compounds into technical debt
-that slows the whole team down.
-
-You are not just writing code. You are shaping the future of this
-project. The patterns you establish will be copied. The corners
-you cut will be cut again.
-
-Fight entropy. Leave the codebase better than you found it.
+- Code is clear and readable
+- Functions and variables are well-named
+- No duplicated code
+- Proper error handling
+- No exposed secrets or API keys
+- Input validation implemented
+- Good test coverage
+- Performance considerations addressed
 
 If anything blocks your completion of the task, output <promise>ABORT</promise>.
 
