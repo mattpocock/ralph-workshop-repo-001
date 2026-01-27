@@ -3,11 +3,13 @@ import { serve } from "@hono/node-server";
 import { zValidator } from "@hono/zod-validator";
 import { nanoid } from "nanoid";
 import bcrypt from "bcrypt";
+import QRCode from "qrcode";
 import { getDatabase } from "./db/index.ts";
 import {
   createLinkSchema,
   updateLinkSchema,
   paginationSchema,
+  qrQuerySchema,
 } from "./schemas/link.ts";
 import { createTagSchema } from "./schemas/tag.ts";
 import { updateClickGeo } from "./services/geo.ts";
@@ -282,6 +284,28 @@ const app = new Hono()
         total,
         totalPages,
       },
+    });
+  })
+  .get("/api/links/:id/qr", zValidator("query", qrQuerySchema), async (c) => {
+    const id = c.req.param("id");
+    const db = getDatabase();
+    const { size } = c.req.valid("query");
+
+    const link = db.prepare("SELECT slug FROM links WHERE id = ?").get(id) as
+      | { slug: string }
+      | undefined;
+    if (!link) {
+      return c.json({ error: "Link not found", code: "NOT_FOUND" }, 404);
+    }
+
+    const shortUrl = `${BASE_URL}/${link.slug}`;
+    const qrBuffer = await QRCode.toBuffer(shortUrl, {
+      width: size,
+      type: "png",
+    });
+
+    return c.body(new Uint8Array(qrBuffer), 200, {
+      "Content-Type": "image/png",
     });
   })
   .patch("/api/links/:id", zValidator("json", updateLinkSchema), async (c) => {

@@ -36,3 +36,10 @@ export const updateLinkSchema = z.object({
   password: z.string().min(4).optional(),
   tags: z.array(z.string()).optional(),
 });
+
+export const qrQuerySchema = z.object({
+  size: z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseInt(val, 10) : 300)),
+});
