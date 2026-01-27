@@ -4,7 +4,11 @@ import { zValidator } from "@hono/zod-validator";
 import { nanoid } from "nanoid";
 import bcrypt from "bcrypt";
 import { getDatabase } from "./db/index.ts";
-import { createLinkSchema, updateLinkSchema } from "./schemas/link.ts";
+import {
+  createLinkSchema,
+  updateLinkSchema,
+  paginationSchema,
+} from "./schemas/link.ts";
 import { createTagSchema } from "./schemas/tag.ts";
 import { updateClickGeo } from "./services/geo.ts";
 
@@ -26,10 +30,12 @@ const app = new Hono()
       ? await bcrypt.hash(body.password, 10)
       : null;
 
-    db.prepare(`
+    db.prepare(
+      `
       INSERT INTO links (id, slug, target_url, password_hash, expires_at, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(id, slug, body.url, passwordHash, body.expiresAt || null, now, now);
+    `
+    ).run(id, slug, body.url, passwordHash, body.expiresAt || null, now, now);
 
     // Associate tags with the link
     const tagNames = body.tags || [];
@@ -76,7 +82,8 @@ const app = new Hono()
     `;
 
     if (tag) {
-      const joinClause = " INNER JOIN link_tags lt ON l.id = lt.link_id INNER JOIN tags t ON lt.tag_id = t.id WHERE t.name = ?";
+      const joinClause =
+        " INNER JOIN link_tags lt ON l.id = lt.link_id INNER JOIN tags t ON lt.tag_id = t.id WHERE t.name = ?";
       countQuery += joinClause;
       selectQuery += joinClause;
     }
@@ -227,21 +234,29 @@ const app = new Hono()
       })),
     });
   })
-  .get("/api/links/:id/clicks", (c) => {
+  .get("/api/links/:id/clicks", zValidator("query", paginationSchema), (c) => {
     const id = c.req.param("id");
     const db = getDatabase();
+    const { page, limit } = c.req.valid("query");
+    const offset = (page - 1) * limit;
 
     const link = db.prepare("SELECT id FROM links WHERE id = ?").get(id);
     if (!link) {
       return c.json({ error: "Link not found", code: "NOT_FOUND" }, 404);
     }
 
+    const totalResult = db
+      .prepare("SELECT COUNT(*) as total FROM clicks WHERE link_id = ?")
+      .get(id) as { total: number };
+    const total = totalResult.total;
+    const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
+
     const clicks = db
       .prepare(
         `SELECT id, timestamp, ip, user_agent, referrer, country, city
-         FROM clicks WHERE link_id = ? ORDER BY timestamp DESC`
+         FROM clicks WHERE link_id = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?`
       )
-      .all(id) as Array<{
+      .all(id, limit, offset) as Array<{
       id: string;
       timestamp: number;
       ip: string | null;
@@ -261,6 +276,12 @@ const app = new Hono()
         country: click.country,
         city: click.city,
       })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
     });
   })
   .patch("/api/links/:id", zValidator("json", updateLinkSchema), async (c) => {
@@ -448,16 +469,16 @@ const app = new Hono()
     const id = nanoid();
 
     try {
-      db.prepare("INSERT INTO tags (id, name) VALUES (?, ?)").run(id, body.name);
+      db.prepare("INSERT INTO tags (id, name) VALUES (?, ?)").run(
+        id,
+        body.name
+      );
     } catch (error) {
       if (
         error instanceof Error &&
         error.message.includes("UNIQUE constraint failed")
       ) {
-        return c.json(
-          { error: "Tag already exists", code: "CONFLICT" },
-          409
-        );
+        return c.json({ error: "Tag already exists", code: "CONFLICT" }, 409);
       }
       throw error;
     }
@@ -469,9 +490,16 @@ const app = new Hono()
     const db = getDatabase();
 
     const link = db
-      .prepare("SELECT id, target_url, password_hash, expires_at FROM links WHERE slug = ?")
+      .prepare(
+        "SELECT id, target_url, password_hash, expires_at FROM links WHERE slug = ?"
+      )
       .get(slug) as
-      | { id: string; target_url: string; password_hash: string | null; expires_at: number | null }
+      | {
+          id: string;
+          target_url: string;
+          password_hash: string | null;
+          expires_at: number | null;
+        }
       | undefined;
 
     if (!link) {
@@ -494,10 +522,7 @@ const app = new Hono()
       }
       const isValid = await bcrypt.compare(password, link.password_hash);
       if (!isValid) {
-        return c.json(
-          { error: "Invalid password", code: "UNAUTHORIZED" },
-          401
-        );
+        return c.json({ error: "Invalid password", code: "UNAUTHORIZED" }, 401);
       }
     }
 

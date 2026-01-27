@@ -45,6 +45,7 @@ describe("Geo-IP lookup on click", () => {
     // Verify the click has geo data populated
     const clicksRes = await client.api.links[":id"].clicks.$get({
       param: { id: link.id },
+      query: {},
     });
     expect(clicksRes.status).toBe(200);
 
