@@ -16,10 +16,12 @@ import { createTagSchema } from "./schemas/tag.ts";
 import { createApiKeySchema } from "./schemas/apiKey.ts";
 import { updateClickGeo } from "./services/geo.ts";
 import { authMiddleware } from "./middleware/auth.ts";
+import { rateLimitMiddleware } from "./middleware/rateLimit.ts";
 
 const BASE_URL = process.env["BASE_URL"] || "http://localhost:3000";
 
 const app = new Hono()
+  .use(rateLimitMiddleware)
   .use(authMiddleware)
   .get("/api/health", (c) => {
     return c.json({ status: "ok" });
