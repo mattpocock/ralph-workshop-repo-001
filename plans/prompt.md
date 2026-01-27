@@ -30,9 +30,31 @@ If there are no more tasks, emit <promise>NO MORE TASKS</promise>.
 
 Explore the repo and fill your context window with relevant information that will allow you to complete the task.
 
-# EXECUTION
+# EXECUTION: RED
 
-Complete the task.
+First, write tests that fail because the feature is not yet implemented.
+
+Run the tests to check that they fail.
+
+Tests should focus on the publicly accessible interface of the system. They should test user behavior, not internal implementation details.
+
+# EXECUTION: GREEN
+
+Next, implement the minimum amount of code necessary to make the tests pass.
+
+# EXECUTION: REFACTOR
+
+Finally, refactor the code to improve its structure without changing its behavior.
+
+This codebase will outlive you. Every shortcut you take becomes
+someone else's burden. Every hack compounds into technical debt
+that slows the whole team down.
+
+You are not just writing code. You are shaping the future of this
+project. The patterns you establish will be copied. The corners
+you cut will be cut again.
+
+Fight entropy. Leave the codebase better than you found it.
 
 If anything blocks your completion of the task, output <promise>ABORT</promise>.
 
