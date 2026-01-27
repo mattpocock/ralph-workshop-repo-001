@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, assert } from "vitest";
 import { testClient } from "hono/testing";
 import app from "./index.ts";
 
@@ -61,7 +61,8 @@ describe("DELETE /api/links/:id", () => {
       param: { id: created.id },
     });
     expect(clicksRes.status).toBe(200);
-    const clicksBody = await clicksRes.json() as { clicks: unknown[] };
+    const clicksBody = await clicksRes.json();
+    assert("clicks" in clicksBody);
     expect(clicksBody.clicks.length).toBe(1);
 
     // Delete the link

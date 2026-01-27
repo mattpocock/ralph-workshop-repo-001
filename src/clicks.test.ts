@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, assert } from "vitest";
 import { testClient } from "hono/testing";
 import { customAlphabet } from "nanoid";
 import app from "./index.ts";
@@ -40,14 +40,7 @@ describe("Click recording on redirect", () => {
     });
     expect(clicksRes.status).toBe(200);
 
-    const clicksBody = (await clicksRes.json()) as {
-      clicks: Array<{
-        id: string;
-        timestamp: number;
-        userAgent: string | null;
-        referrer: string | null;
-      }>;
-    };
+    const clicksBody = await clicksRes.json();
     expect(clicksBody.clicks).toHaveLength(1);
     expect(clicksBody.clicks[0]).toMatchObject({
       id: expect.any(String),
@@ -80,9 +73,8 @@ describe("Click recording on redirect", () => {
     });
     expect(clicksRes.status).toBe(200);
 
-    const clicksBody = (await clicksRes.json()) as {
-      clicks: Array<{ id: string }>;
-    };
+    const clicksBody = await clicksRes.json();
+    assert("clicks" in clicksBody);
     expect(clicksBody.clicks).toHaveLength(3);
   });
 });

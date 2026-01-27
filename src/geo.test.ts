@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, assert } from "vitest";
 import { testClient } from "hono/testing";
 import { customAlphabet } from "nanoid";
 import app from "./index.ts";
@@ -48,18 +48,12 @@ describe("Geo-IP lookup on click", () => {
     });
     expect(clicksRes.status).toBe(200);
 
-    const clicksBody = (await clicksRes.json()) as {
-      clicks: Array<{
-        id: string;
-        timestamp: number;
-        ip: string | null;
-        country: string | null;
-        city: string | null;
-      }>;
-    };
+    const clicksBody = await clicksRes.json();
 
+    assert("clicks" in clicksBody);
     expect(clicksBody.clicks).toHaveLength(1);
-    const click = clicksBody.clicks[0]!;
+    const click = clicksBody.clicks[0];
+    assert(click);
     expect(click.ip).toBe("8.8.8.8");
     // Geo data should be populated after async lookup
     expect(click.country).toBe("US");
