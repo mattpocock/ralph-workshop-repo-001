@@ -118,6 +118,20 @@ const app = new Hono()
       updatedAt: link.updated_at,
     });
   })
+  .get("/api/tags", (c) => {
+    const db = getDatabase();
+
+    const tags = db
+      .prepare(
+        `SELECT t.id, t.name, COUNT(lt.link_id) as linkCount
+         FROM tags t
+         LEFT JOIN link_tags lt ON t.id = lt.tag_id
+         GROUP BY t.id, t.name`
+      )
+      .all() as Array<{ id: string; name: string; linkCount: number }>;
+
+    return c.json({ tags });
+  })
   .post("/api/tags", zValidator("json", createTagSchema), (c) => {
     const body = c.req.valid("json");
     const db = getDatabase();
