@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 import bcrypt from "bcrypt";
 import { getDatabase } from "./db/index.ts";
 import { createLinkSchema } from "./schemas/link.ts";
+import { createTagSchema } from "./schemas/tag.ts";
 import { updateClickGeo } from "./services/geo.ts";
 
 const BASE_URL = process.env["BASE_URL"] || "http://localhost:3000";
@@ -116,6 +117,29 @@ const app = new Hono()
       createdAt: link.created_at,
       updatedAt: link.updated_at,
     });
+  })
+  .post("/api/tags", zValidator("json", createTagSchema), (c) => {
+    const body = c.req.valid("json");
+    const db = getDatabase();
+
+    const id = nanoid();
+
+    try {
+      db.prepare("INSERT INTO tags (id, name) VALUES (?, ?)").run(id, body.name);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes("UNIQUE constraint failed")
+      ) {
+        return c.json(
+          { error: "Tag already exists", code: "CONFLICT" },
+          409
+        );
+      }
+      throw error;
+    }
+
+    return c.json({ id, name: body.name }, 201);
   })
   .get("/:slug", async (c) => {
     const slug = c.req.param("slug");
