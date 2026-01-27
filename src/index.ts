@@ -38,6 +38,20 @@ const app = new Hono()
       },
       201
     );
+  })
+  .get("/:slug", (c) => {
+    const slug = c.req.param("slug");
+    const db = getDatabase();
+
+    const link = db
+      .prepare("SELECT target_url FROM links WHERE slug = ?")
+      .get(slug) as { target_url: string } | undefined;
+
+    if (!link) {
+      return c.json({ error: "Link not found", code: "NOT_FOUND" }, 404);
+    }
+
+    return c.redirect(link.target_url, 302);
   });
 
 const port = parseInt(process.env["PORT"] || "3000", 10);
