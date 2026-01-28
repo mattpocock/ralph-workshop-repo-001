@@ -12,3 +12,5 @@ Do NOT make direct queries to the database to verify that data has been written 
 You should test with a local database: `./data/test-links.db`.
 
 You should use Hono's test helpers to test the API: [hono-testing.md](./hono-testing.md)
+
+For handling discriminated unions from Hono's test client, check out [handling-error-results.md](./handling-error-results.md)
