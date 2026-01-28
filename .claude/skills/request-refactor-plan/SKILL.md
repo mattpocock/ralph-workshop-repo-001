@@ -3,7 +3,7 @@ name: request-refactor-plan
 description: Use this skill when user wants to create a refactor plan.
 ---
 
-This skill will be invoked when the user wants to create a refactor request. You should go through the steps below. You may skip steps if you don't consider them necessary.
+This skill will be invoked when the user wants to create a refactor plan. You should go through the steps below. You may skip steps if you don't consider them necessary.
 
 1. Ask the user for a long, detailed description of the problem they want to solve and any potential ideas for solutions.
 
