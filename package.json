@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "ralph:hitl": "chmod +x plans/once.sh && plans/once.sh",
     "ralph:afk": "chmod +x plans/afk.sh && plans/afk.sh",
+    "rebase-all": "chmod +x internal/rebase-and-push.sh && internal/rebase-and-push.sh",
     "prepare": "husky"
   },
   "lint-staged": {
