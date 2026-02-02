@@ -34,4 +34,9 @@ for ((i=1; i<=$1; i++)); do
     echo "Ralph complete after $i iterations."
     exit 0
   fi
+
+  if [[ "$result" == *"<promise>ABORT</promise>"* ]]; then
+    echo "Ralph aborted after $i iterations."
+    exit 1
+  fi
 done

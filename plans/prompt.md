@@ -24,6 +24,8 @@ Explore the repo and fill your context window with relevant information that wil
 
 Complete the task.
 
+If anything blocks your completion of the task, output <promise>ABORT</promise>.
+
 # FEEDBACK LOOPS
 
 Before committing, run the feedback loops:
