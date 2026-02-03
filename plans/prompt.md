@@ -1,8 +1,8 @@
 # ISSUES
 
-Issues JSON is provided at start of context. Parse it to get open issues with their bodies and comments.
+Local issues from `issues/` directory are provided at start of context. Each issue is a markdown file with its filename and contents.
 
-You've also been passed a file containing the last 10 RALPH commits (SHA, date, full message). Review these to understand what work has been done.
+You've also been passed the last 10 RALPH commits (SHA, date, full message). Review these to understand what work has been done.
 
 # TASK BREAKDOWN
 
@@ -79,9 +79,9 @@ Keep it concise.
 
 # THE ISSUE
 
-If the task is complete, close the original GitHub issue.
+If the task is complete, delete the issue file from the `issues/` directory.
 
-If the task is not complete, leave a comment on the GitHub issue with a brief summary of what was done.
+If the task is not complete, append a brief summary of what was done to the issue file.
 
 # FINAL RULES
 

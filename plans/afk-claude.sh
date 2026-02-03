@@ -18,14 +18,22 @@ for ((i=1; i<=$1; i++)); do
   trap "rm -f $tmpfile" EXIT
   echo "------- ITERATION $i --------"
 
-  issues=$(gh issue list --state open --json number,title,body,comments)
+  issues=""
+  if [ -d "issues" ]; then
+    for f in issues/*.md; do
+      [ -f "$f" ] && issues+="--- $(basename "$f") ---
+$(cat "$f")
+
+"
+    done
+  fi
   ralph_commits=$(git log --grep="RALPH" -n 10 --format="%H%n%ad%n%B---" --date=short 2>/dev/null || echo "No RALPH commits found")
 
   docker sandbox run claude . -- \
     --verbose \
     --print \
     --output-format stream-json \
-    "@plans/prompt.md $issues Previous RALPH commits: $ralph_commits" \
+    "@plans/prompt.md ISSUES: $issues Previous RALPH commits: $ralph_commits" \
   | grep --line-buffered '^{' \
   | tee "$tmpfile" \
   | jq --unbuffered -rj "$stream_text"
