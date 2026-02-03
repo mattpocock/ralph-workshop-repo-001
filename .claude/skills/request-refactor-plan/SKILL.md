@@ -19,7 +19,7 @@ This skill will be invoked when the user wants to create a refactor plan. You sh
 
 7. Break the implementation into a plan of tiny commits. Remember Martin Fowler's advice to "make each refactoring step as small as possible, so that you can always see the program working."
 
-8. Create a GitHub issue with the refactor plan. Use the following template for the issue description:
+8. Save the refactor plan as a markdown file in the `issues/` directory (e.g., `issues/refactor-name.md`). Use the following template:
 
 <refactor-plan-template>
 
