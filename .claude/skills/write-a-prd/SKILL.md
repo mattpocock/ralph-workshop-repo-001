@@ -45,6 +45,14 @@ A LONG, numbered list of user stories. Each user story should be in the format o
 
 This list of user stories should be extremely extensive and cover all aspects of the feature.
 
+## 'Polishing' Requirements
+
+Once the user stories are complete, we will end up with a working, but not refined, feature or application. After the work is complete, we should enter a polishing phase.
+
+This should be a list of checks that we want to make at the end of the work to polish and refine the work done for maximum user enjoyment and experience.
+
+They should not meaningfully extend the work but instead ensure harmony of all created elements and ensure any errors are properly handled and make things delightful and beautiful.
+
 ## Implementation Decisions
 
 A list of implementation decisions that were made. This can include:
