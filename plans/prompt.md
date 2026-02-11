@@ -14,7 +14,7 @@ Make each task the smallest possible unit of work. We don't want to outrun our h
 
 Pick the next task.
 
-If all tasks are complete, output <promise>COMPLETE</promise>.
+If there are no more tasks, emit <promise>NO MORE TASKS</promise>.
 
 # EXPLORATION
 
